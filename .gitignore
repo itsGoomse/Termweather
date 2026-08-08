@@ -12,3 +12,4 @@ wheels/
 .vscode
 # User data
 cities.json
+userpreferences.json
