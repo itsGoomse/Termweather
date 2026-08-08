@@ -1,6 +1,6 @@
 """Simple live-updating weather TUI built with Textual."""
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 from textual import work
 from textual.app import App, ComposeResult, SystemCommand
@@ -125,6 +125,104 @@ class HourlyVariableProvider(Provider):
         return toggle
 
 
+class SettingsProvider(Provider):
+    """Command palette provider that lets the user tweak app settings."""
+
+    # (label, help, callback)
+    def _commands(self) -> list[tuple[str, str, Callable[[], None]]]:
+        return [
+            (
+                f"Refresh interval: {config.refresh}s",
+                "Set how often the weather auto-refreshes",
+                self._set_refresh,
+            ),
+            (
+                f"Temperature unit: {config.temp_unit}",
+                "Set the temperature unit",
+                self._set_temp_unit,
+            ),
+            (
+                f"Wind speed unit: {config.speed_unit}",
+                "Set the wind speed unit",
+                self._set_speed_unit,
+            ),
+            (
+                f"Humidity unit: {config.humidity_unit}",
+                "Set the humidity unit",
+                self._set_humidity_unit,
+            ),
+            (
+                f"Precipitation unit: {config.precip_unit}",
+                "Set the precipitation unit",
+                self._set_precip_unit,
+            ),
+        ]
+
+    async def search(self, query: str) -> Hits:
+        """Yield a command for each setting matching the query."""
+        matcher = self.matcher(query)
+        for label, help_text, callback in self._commands():
+            if (match := matcher.match(label)) > 0:
+                yield Hit(
+                    match,
+                    matcher.highlight(label),
+                    callback,
+                    text=label,
+                    help=help_text,
+                )
+
+    async def discover(self) -> Hits:
+        """Yield all settings so they show up before the user types."""
+        for label, help_text, callback in self._commands():
+            yield Hit(
+                0,
+                label,
+                callback,
+                text=label,
+                help=help_text,
+            )
+
+    def _set_refresh(self) -> None:
+        """Cycle the refresh interval through a few sensible values."""
+        options = [300, 600, 900, 1800, 3600]
+        current = config.refresh
+        next_value = options[(options.index(current) + 1) % len(options)] if current in options else options[0]
+        config.save_refresh(next_value)
+        app = self.app
+        if isinstance(app, WeatherApp):
+            app._restart_refresh_timer()
+        self._reopen()
+
+    def _set_temp_unit(self) -> None:
+        self._cycle_unit("temp_unit", ["°C", "°F", "K"])
+
+    def _set_speed_unit(self) -> None:
+        self._cycle_unit("speed_unit", ["km/h", "mph", "m/s", "kn"])
+
+    def _set_humidity_unit(self) -> None:
+        self._cycle_unit("humidity_unit", ["%"])
+
+    def _set_precip_unit(self) -> None:
+        self._cycle_unit("precip_unit", ["mm", "in"])
+
+    def _cycle_unit(self, key: str, options: list[str]) -> None:
+        """Cycle a unit setting through the given options and persist it."""
+        current = getattr(config, key)
+        next_value = options[(options.index(current) + 1) % len(options)] if current in options else options[0]
+        setattr(config, key, next_value)
+        config.save_unit(key, next_value)
+        app = self.app
+        if isinstance(app, WeatherApp) and app.current_city:
+            app._fetch_weather(app.current_city, force=True)
+        self._reopen()
+
+    def _reopen(self) -> None:
+        """Re-open the settings menu so the user can keep adjusting settings."""
+        app = self.app
+        if isinstance(app, WeatherApp):
+            app._open_settings_menu()
+
+
 class WeatherApp(App):
     """A TUI that shows current weather + forecast, with city switching."""
 
@@ -220,6 +318,11 @@ class WeatherApp(App):
             "Choose extra hourly forecast variables",
             self._open_variables_menu,
         )
+        yield SystemCommand(
+            "Settings",
+            "Adjust refresh interval and units",
+            self._open_settings_menu,
+        )
 
     def _open_theme_menu(self) -> None:
         """Open a nested command palette listing all themes."""
@@ -238,6 +341,21 @@ class WeatherApp(App):
                 placeholder="Search variables…",
             )
         )
+
+    def _open_settings_menu(self) -> None:
+        """Open a nested command palette listing the app settings."""
+        self.push_screen(
+            CommandPalette(
+                providers=[SettingsProvider],
+                placeholder="Search settings…",
+            )
+        )
+
+    def _restart_refresh_timer(self) -> None:
+        """Restart the auto-refresh interval with the current config value."""
+        if hasattr(self, "_refresh_timer"):
+            self._refresh_timer.stop()
+        self._refresh_timer = self.set_interval(config.refresh, self.refresh_all)
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -279,7 +397,7 @@ class WeatherApp(App):
                 "👋 No city selected yet. Type a city below and press Enter to get started."
             )
         # Refresh periodically based on config (seconds).
-        self.set_interval(config.refresh, self.refresh_all)
+        self._refresh_timer = self.set_interval(config.refresh, self.refresh_all)
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Switch the displayed city when the user selects one."""
@@ -389,10 +507,10 @@ class WeatherApp(App):
             f"🌐 {info['latitude']:.4f}, {info['longitude']:.4f}"
         )
         self.query_one("#temp", Static).update(
-            f"🌡️  Temperature: {weather['temperature_2m']} {config.temp_unit}"
+            f"🌡️  Temperature: {config.convert_temp(weather['temperature_2m']):.1f} {config.temp_unit}"
         )
         self.query_one("#wind", Static).update(
-            f"💨 Wind: {weather['wind_speed_10m']} {config.speed_unit}"
+            f"💨 Wind: {config.convert_speed(weather['wind_speed_10m']):.1f} {config.speed_unit}"
         )
         self.query_one("#humidity", Static).update(
             f"💧 Humidity: {weather['relative_humidity_2m']}{config.humidity_unit}"
@@ -429,7 +547,12 @@ class WeatherApp(App):
         winds = hourly["wind_speed_10m"]
         precip = hourly["precipitation"]
         for i, t in enumerate(times):
-            row = [t[11:16], f"{temps[i]}", f"{winds[i]}", f"{precip[i]}"]
+            row = [
+                t[11:16],
+                f"{config.convert_temp(temps[i]):.1f}",
+                f"{config.convert_speed(winds[i]):.1f}",
+                f"{config.convert_precip(precip[i]):.1f}",
+            ]
             for var in config.hourly_variables:
                 if var in config.HOURLY_VARIABLE_OPTIONS and var in hourly:
                     row.append(f"{hourly[var][i]}")
@@ -445,7 +568,7 @@ class WeatherApp(App):
         for date, high, low, code in zip(dates, highs, lows, codes):
             desc = WEATHER_CODES.get(code, f"Code {code}")
             lines.append(
-                f"{date}  {desc:<16} {low}{config.temp_unit} / {high}{config.temp_unit}"
+                f"{date}  {desc:<16} {config.convert_temp(low):.1f}{config.temp_unit} / {config.convert_temp(high):.1f}{config.temp_unit}"
             )
         return "\n".join(lines)
 

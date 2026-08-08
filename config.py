@@ -122,3 +122,88 @@ def save_hourly_variables(variables: list[str]) -> None:
 # Initialize the module-level list from the persisted file on import.
 hourly_variables = load_hourly_variables()
 
+
+# --- Generic preference helpers ---------------------------------------------
+
+def _load_pref(key: str, default):
+    """Return a saved preference value, or ``default`` if not stored."""
+    prefs = load_preferences()
+    value = prefs.get(key)
+    return value if value is not None else default
+
+
+def _save_pref(key: str, value) -> None:
+    """Persist a single preference value to the preferences file."""
+    prefs = load_preferences()
+    prefs[key] = value
+    save_preferences(prefs)
+
+
+# --- Refresh interval --------------------------------------------------------
+
+def load_refresh() -> int:
+    """Return the saved auto-refresh interval (seconds)."""
+    try:
+        return int(_load_pref("refresh", refresh))
+    except (TypeError, ValueError):
+        return refresh
+
+
+def save_refresh(seconds: int) -> None:
+    """Persist the auto-refresh interval (seconds)."""
+    global refresh
+    refresh = int(seconds)
+    _save_pref("refresh", refresh)
+
+
+# --- Units -------------------------------------------------------------------
+
+def load_unit(key: str, default: str) -> str:
+    """Return a saved unit string, or ``default`` if not stored."""
+    value = _load_pref(key, default)
+    return str(value) if value else default
+
+
+def save_unit(key: str, value: str) -> None:
+    """Persist a unit string."""
+    _save_pref(key, value)
+
+
+# Initialize the module-level settings from the persisted file on import.
+refresh = load_refresh()
+temp_unit = load_unit("temp_unit", temp_unit)
+speed_unit = load_unit("speed_unit", speed_unit)
+humidity_unit = load_unit("humidity_unit", humidity_unit)
+precip_unit = load_unit("precip_unit", precip_unit)
+
+
+# --- Unit conversion ---------------------------------------------------------
+# The Open-Meteo API always returns metric values (°C, km/h, mm). These helpers
+# convert a metric value to the user's chosen display unit.
+
+def convert_temp(celsius: float) -> float:
+    """Convert a temperature in °C to the configured unit."""
+    if temp_unit == "°F":
+        return celsius * 9 / 5 + 32
+    if temp_unit == "K":
+        return celsius + 273.15
+    return celsius
+
+
+def convert_speed(kmh: float) -> float:
+    """Convert a wind speed in km/h to the configured unit."""
+    if speed_unit == "mph":
+        return kmh * 0.621371
+    if speed_unit == "m/s":
+        return kmh / 3.6
+    if speed_unit == "kn":
+        return kmh * 0.539957
+    return kmh
+
+
+def convert_precip(mm: float) -> float:
+    """Convert precipitation in mm to the configured unit."""
+    if precip_unit == "in":
+        return mm * 0.0393701
+    return mm
+

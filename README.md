@@ -82,11 +82,13 @@ TermWeather --once "Holbæk"
 
 **Add extra hourly variables:** press `Ctrl+P`, select **Variables**, then toggle any of the extra 24-hour forecast columns (e.g. Humidity, Feels like, Cloud cover, Wind gusts). Enabled variables are saved to `userpreferences.json` and requested from the API on the next fetch.
 
+**Adjust settings:** press `Ctrl+P`, select **Settings**, then cycle through the refresh interval and unit options (temperature, wind speed, humidity, precipitation). The menu stays open so you can keep adjusting — press `Esc` to close it. Changes are saved to `userpreferences.json` and applied immediately. The displayed values are **converted** to the selected unit (e.g. switching temperature to `°F` converts the numbers, not just the label).
+
 ---
 
 ## Configuration
 
-Edit `config.py` to change defaults:
+All preferences are configurable **from within the app** via the command palette (`Ctrl+P` → **Settings**, **Theme**, or **Variables**). The defaults below are set in `config.py` and used on first launch:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -97,7 +99,7 @@ Edit `config.py` to change defaults:
 | `precip_unit` | Precipitation unit | `mm` |
 | `theme` | Default theme | `textual-dark` |
 
-User-added cities are stored in `cities.json` (created automatically). Your chosen theme is stored in `userpreferences.json` (created automatically).
+User-added cities are stored in `cities.json` (created automatically). All other preferences (theme, units, refresh interval, hourly variables) are stored in `userpreferences.json` (created automatically).
 
 ---
 
