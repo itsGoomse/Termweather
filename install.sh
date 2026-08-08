@@ -43,7 +43,7 @@ if command -v python3 >/dev/null 2>&1; then
 elif command -v python >/dev/null 2>&1; then
     PYTHON="python"
 else
-    die "No Python interpreter found. Please install Python 3.15+ first."
+    die "No Python interpreter found. Please install Python 3.14+ first."
 fi
 
 info "Using Python: $("$PYTHON" --version 2>&1)"

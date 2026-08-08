@@ -2,7 +2,7 @@
 
 A live-updating weather **TUI** (terminal user interface) built with [Textual](https://textual.textualize.io/). It pulls current conditions, a 5-day forecast, and a 24-hour breakdown from the free [Open-Meteo](https://open-meteo.com/) API — no API key required.
 
-![Python](https://img.shields.io/badge/Python-3.15+-blue)
+![Python](https://img.shields.io/badge/Python-3.14+-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
@@ -23,7 +23,7 @@ A live-updating weather **TUI** (terminal user interface) built with [Textual](h
 
 ### Prerequisites
 
-- Python 3.15+
+- Python 3.14+
 - [uv](https://docs.astral.sh/uv/) (recommended) or `pip`
 
 ### Installation

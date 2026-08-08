@@ -3,7 +3,7 @@ name = "termweather"
 version = "0.1.0"
 description = "A simple weather dashboard for terminal interface"
 readme = "README.md"
-requires-python = ">=3.15"
+requires-python = ">=3.14"
 dependencies = [
     "aiohttp>=3.14.3",
     "asyncio>=4.0.0",
