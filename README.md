@@ -28,6 +28,12 @@ A live-updating weather **TUI** (terminal user interface) built with [Textual](h
 
 ### Installation
 
+```bash 
+# Run the included install script
+cd Termweather
+./install.sh
+```
+
 ```bash
 # Clone the repo
 git clone https://github.com/itsGoomse/termweather.git
