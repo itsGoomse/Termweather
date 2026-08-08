@@ -60,7 +60,7 @@ TermWeather
 TermWeather --once "Holbæk"
 ```
 
-> The `TermWeather` command is created automatically when the package is installed (via `uv sync` or `pip install -e .`). The `install.sh` script also installs a **global launcher** in `~/.local/bin`, so you can run `TermWeather` from any directory without activating the virtual environment. If you're in the project directory without installing, you can still run `python main.py` directly.
+> The `TermWeather` command is created automatically when the package is installed (via `uv sync` or `pip install -e .`). The `install.sh` script also installs a **global launcher** in `~/.local/bin`, so you can run `TermWeather` from any directory without activating the virtual environment. If `~/.local/bin` is not on your `PATH`, add it to your shell config (e.g. `export PATH="$HOME/.local/bin:$PATH"` in `~/.bashrc`). If you're in the project directory without installing, you can still run `python main.py` directly.
 
 ---
 
