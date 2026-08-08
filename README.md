@@ -30,7 +30,7 @@ A live-updating weather **TUI** (terminal user interface) built with [Textual](h
 
 ```bash
 # Clone the repo
-git clone https://github.com/<your-username>/weatherterm.git
+git clone https://github.com/itsGoomse/weatherterm.git
 cd weatherterm
 
 # Set up the environment with uv
