@@ -38,7 +38,7 @@ WEATHER_CODES = {
 class WeatherApp(App):
     """A TUI that shows current weather + forecast, with city switching."""
 
-    TITLE = "WeatherTerm"
+    TITLE = "TermWeather"
 
     # Keybindings shown automatically in the Footer.
     BINDINGS = [

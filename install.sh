@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# install.sh — Set up the weatherterm project and its dependencies.
+# install.sh — Set up the TermWeather project and its dependencies.
 #
 # Detects whether `uv` or `pip` is available and uses whichever is present.
 #   - uv  -> `uv sync` (creates .venv and installs deps from pyproject.toml)
@@ -86,7 +86,7 @@ esac
 
 # --- Optional: run the TUI once ---------------------------------------------
 if [[ "${1:-}" == "--once" ]]; then
-    info "Launching weatherterm..."
+    info "Launching TermWeather..."
     case "$PM" in
         uv) uv run python main.py ;;
         pip) python main.py ;;

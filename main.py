@@ -1,4 +1,4 @@
-"""Entry point for the WeatherTerm TUI."""
+"""Entry point for the TermWeather TUI."""
 
 import signal
 import sys

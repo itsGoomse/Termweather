@@ -30,8 +30,8 @@ A live-updating weather **TUI** (terminal user interface) built with [Textual](h
 
 ```bash
 # Clone the repo
-git clone https://github.com/itsGoomse/weatherterm.git
-cd weatherterm
+git clone https://github.com/itsGoomse/termweather.git
+cd termweather
 
 # Set up the environment with uv
 uv sync
@@ -89,7 +89,7 @@ User-added cities are stored in `cities.json` (created automatically).
 ## Project Structure
 
 ```
-weatherterm/
+termweather/
 ├── main.py        # Entry point (TUI + --once test mode)
 ├── ui.py          # Textual TUI app (panels, keybindings, layout)
 ├── weather.py     # Data layer (Open-Meteo API calls)

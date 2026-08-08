@@ -251,7 +251,7 @@ wheels = [
 ]
 
 [[package]]
-name = "weatherterm"
+name = "termweather"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

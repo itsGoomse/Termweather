@@ -1,5 +1,5 @@
 [project]
-name = "weatherterm"
+name = "termweather"
 version = "0.1.0"
 description = "A simple weather dashboard for terminal interface"
 readme = "README.md"
