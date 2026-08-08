@@ -29,6 +29,79 @@ HOURLY_VARIABLE_OPTIONS = {
 # The extra hourly variables currently enabled (subset of HOURLY_VARIABLE_OPTIONS).
 hourly_variables: list[str] = []
 
+# Grouped extra hourly variables for the palette submenus. Each group maps a
+# category name to a list of (variable, label, unit) tuples. The flat
+# HOURLY_VARIABLE_OPTIONS dict above is kept in sync for the chart/API code.
+HOURLY_VARIABLE_GROUPS: dict[str, list[tuple[str, str, str]]] = {
+    "Temperature & Humidity": [
+        ("temperature_80m", "Temp (80 m)", "°C"),
+        ("temperature_120m", "Temp (120 m)", "°C"),
+        ("temperature_180m", "Temp (180 m)", "°C"),
+        ("relative_humidity_2m", "Humidity", "%"),
+        ("dew_point_2m", "Dew point", "°C"),
+        ("apparent_temperature", "Feels like", "°C"),
+        ("vapour_pressure_deficit", "Vapour pressure deficit", "kPa"),
+    ],
+    "Precipitation": [
+        ("rain", "Rain", "mm"),
+        ("showers", "Showers", "mm"),
+        ("snowfall", "Snowfall", "cm"),
+        ("snow_depth", "Snow depth", "m"),
+        ("freezing_level_height", "Freezing level", "m"),
+        ("cape", "CAPE", "J/kg"),
+    ],
+    "Pressure & Clouds": [
+        ("pressure_msl", "Sea level pressure", "hPa"),
+        ("surface_pressure", "Surface pressure", "hPa"),
+        ("cloud_cover", "Cloud cover", "%"),
+        ("cloud_cover_low", "Cloud cover low", "%"),
+        ("cloud_cover_mid", "Cloud cover mid", "%"),
+        ("cloud_cover_high", "Cloud cover high", "%"),
+    ],
+    "Wind": [
+        ("wind_speed_80m", "Wind speed (80 m)", "km/h"),
+        ("wind_speed_120m", "Wind speed (120 m)", "km/h"),
+        ("wind_speed_180m", "Wind speed (180 m)", "km/h"),
+        ("wind_direction_10m", "Wind dir (10 m)", "°"),
+        ("wind_direction_80m", "Wind dir (80 m)", "°"),
+        ("wind_direction_120m", "Wind dir (120 m)", "°"),
+        ("wind_direction_180m", "Wind dir (180 m)", "°"),
+        ("wind_gusts_10m", "Wind gusts", "km/h"),
+    ],
+    "Solar Radiation": [
+        ("shortwave_radiation", "Shortwave radiation", "W/m²"),
+        ("direct_radiation", "Direct radiation", "W/m²"),
+        ("direct_normal_irradiance", "Direct normal irradiance", "W/m²"),
+        ("diffuse_radiation", "Diffuse radiation", "W/m²"),
+        ("global_tilted_irradiance", "Global tilted irradiance", "W/m²"),
+    ],
+    "Soil": [
+        ("soil_temperature_0cm", "Soil temp (0 cm)", "°C"),
+        ("soil_temperature_6cm", "Soil temp (6 cm)", "°C"),
+        ("soil_temperature_18cm", "Soil temp (18 cm)", "°C"),
+        ("soil_temperature_54cm", "Soil temp (54 cm)", "°C"),
+        ("soil_moisture_0_to_1cm", "Soil moisture (0-1 cm)", "m³/m³"),
+        ("soil_moisture_1_to_3cm", "Soil moisture (1-3 cm)", "m³/m³"),
+        ("soil_moisture_3_to_9cm", "Soil moisture (3-9 cm)", "m³/m³"),
+        ("soil_moisture_9_to_27cm", "Soil moisture (9-27 cm)", "m³/m³"),
+        ("soil_moisture_27_to_81cm", "Soil moisture (27-81 cm)", "m³/m³"),
+    ],
+    "Other": [
+        ("visibility", "Visibility", "km"),
+        ("evapotranspiration", "Evapotranspiration", "mm"),
+        ("et0_fao_evapotranspiration", "Reference evapotranspiration", "mm"),
+        ("is_day", "Is day", ""),
+    ],
+}
+
+# Keep the flat dict in sync with the grouped structure so existing chart/API
+# code keeps working.
+HOURLY_VARIABLE_OPTIONS = {
+    var: (label, unit)
+    for group in HOURLY_VARIABLE_GROUPS.values()
+    for var, label, unit in group
+}
+
 # Path to the JSON file that persists user-added cities.
 CITIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cities.json")
 

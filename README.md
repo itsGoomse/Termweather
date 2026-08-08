@@ -27,33 +27,18 @@ A live-updating weather **TUI** (terminal user interface) built with [Textual](h
 - [uv](https://docs.astral.sh/uv/) (recommended) or `pip`
 
 ### Installation
+The app includes an install script, that adds the app as an executable in the ~/.local/bin path
 
 ```bash
 # Run the included install script (recommended)
 cd termweather
 ./install.sh
 ```
-
-```bash
-# Or set up manually
-git clone https://github.com/itsGoomse/termweather.git
-cd termweather
-
-# With uv
-uv sync
-
-# Or with pip
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-```
-
 ### Run the TUI
 
 ```bash
 TermWeather
 ```
-
 ### Run a one-off data check (no TUI)
 
 ```bash
@@ -80,9 +65,9 @@ TermWeather --once "Holbæk"
 
 **Change the theme:** press `Ctrl+P` to open the command palette, select **Theme**, then pick any of the available themes (e.g. `nord`, `gruvbox`, `catppuccin-mocha`, `dracula`, `tokyo-night`). Your choice is saved to `userpreferences.json` and restored on the next launch. The usual system commands (Keys, Quit, Screenshot, etc.) remain available in the palette.
 
-**Add extra hourly variables:** press `Ctrl+P`, select **Variables**, then toggle any of the extra 24-hour forecast columns (e.g. Humidity, Feels like, Cloud cover, Wind gusts). Enabled variables are saved to `userpreferences.json` and requested from the API on the next fetch.
+**Add extra hourly variables:** press `Ctrl+P`, select **Variables**, then pick a category (e.g. **Wind**, **Precipitation**, **Solar Radiation**, **Soil**) to see its variables, and toggle any of the extra 24-hour forecast columns. The menu stays open and the highlight moves to the toggled variable so you can keep adjusting — press `Esc` to close it. Enabled variables are saved to `userpreferences.json` and requested from the API on the next fetch.
 
-**Adjust settings:** press `Ctrl+P`, select **Settings**, then cycle through the refresh interval and unit options (temperature, wind speed, humidity, precipitation). The menu stays open so you can keep adjusting — press `Esc` to close it. Changes are saved to `userpreferences.json` and applied immediately. The displayed values are **converted** to the selected unit (e.g. switching temperature to `°F` converts the numbers, not just the label).
+**Adjust settings:** press `Ctrl+P`, select **Settings**, then cycle through the refresh interval and unit options (temperature, wind speed, humidity, precipitation). The menu stays open and the highlight moves to the changed setting so you can keep adjusting — press `Esc` to close it. Changes are saved to `userpreferences.json` and applied immediately. The displayed values are **converted** to the selected unit (e.g. switching temperature to `°F` converts the numbers, not just the label).
 
 ---
 

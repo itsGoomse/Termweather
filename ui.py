@@ -79,13 +79,55 @@ class ThemeListProvider(Provider):
         return apply
 
 
-class HourlyVariableProvider(Provider):
-    """Command palette provider that toggles extra hourly forecast variables."""
+class VariableGroupProvider(Provider):
+    """Command palette provider that lists the variable categories (submenus)."""
+
+    async def search(self, query: str) -> Hits:
+        """Yield a command for each group matching the query."""
+        matcher = self.matcher(query)
+        for group in config.HOURLY_VARIABLE_GROUPS:
+            if (match := matcher.match(group)) > 0:
+                yield Hit(
+                    match,
+                    matcher.highlight(group),
+                    self._make_callback(group),
+                    text=group,
+                    help=f"Choose hourly {group.lower()} variables",
+                )
+
+    async def discover(self) -> Hits:
+        """Yield all groups so they show up before the user types."""
+        for group in config.HOURLY_VARIABLE_GROUPS:
+            yield Hit(
+                0,
+                group,
+                self._make_callback(group),
+                text=group,
+                help=f"Choose hourly {group.lower()} variables",
+            )
+
+    def _make_callback(self, group: str):
+        """Return a zero-argument callback that opens the group's submenu."""
+        def open_group() -> None:
+            app = self.app
+            if isinstance(app, WeatherApp):
+                app._open_variable_group(group)
+        return open_group
+
+
+class VariableListProvider(Provider):
+    """Command palette provider that toggles variables within a single group."""
+
+    # Subclasses set this to the group name they list.
+    GROUP: str = ""
+
+    def _variables(self) -> list[tuple[str, str, str]]:
+        return config.HOURLY_VARIABLE_GROUPS.get(self.GROUP, [])
 
     async def search(self, query: str) -> Hits:
         """Yield a command for each variable matching the query."""
         matcher = self.matcher(query)
-        for var, (label, _unit) in config.HOURLY_VARIABLE_OPTIONS.items():
+        for var, label, _unit in self._variables():
             if (match := matcher.match(label)) > 0:
                 yield Hit(
                     match,
@@ -97,7 +139,7 @@ class HourlyVariableProvider(Provider):
 
     async def discover(self) -> Hits:
         """Yield all variables so they show up before the user types."""
-        for var, (label, _unit) in config.HOURLY_VARIABLE_OPTIONS.items():
+        for var, label, _unit in self._variables():
             yield Hit(
                 0,
                 label,
@@ -122,7 +164,16 @@ class HourlyVariableProvider(Provider):
             app = self.app
             if isinstance(app, WeatherApp) and app.current_city:
                 app._fetch_weather(app.current_city, force=True)
+            # Re-open the group submenu so the user can keep toggling.
+            self._reopen(var)
         return toggle
+
+    def _reopen(self, var: str) -> None:
+        """Re-open the group submenu, highlighting the toggled variable."""
+        app = self.app
+        if isinstance(app, WeatherApp):
+            index = [v for v, _, _ in self._variables()].index(var)
+            app._open_variable_group(self.GROUP, highlight=index)
 
 
 class SettingsProvider(Provider):
@@ -191,21 +242,21 @@ class SettingsProvider(Provider):
         app = self.app
         if isinstance(app, WeatherApp):
             app._restart_refresh_timer()
-        self._reopen()
+        self._reopen(0)
 
     def _set_temp_unit(self) -> None:
-        self._cycle_unit("temp_unit", ["°C", "°F", "K"])
+        self._cycle_unit("temp_unit", ["°C", "°F", "K"], 1)
 
     def _set_speed_unit(self) -> None:
-        self._cycle_unit("speed_unit", ["km/h", "mph", "m/s", "kn"])
+        self._cycle_unit("speed_unit", ["km/h", "mph", "m/s", "kn"], 2)
 
     def _set_humidity_unit(self) -> None:
-        self._cycle_unit("humidity_unit", ["%"])
+        self._cycle_unit("humidity_unit", ["%"], 3)
 
     def _set_precip_unit(self) -> None:
-        self._cycle_unit("precip_unit", ["mm", "in"])
+        self._cycle_unit("precip_unit", ["mm", "in"], 4)
 
-    def _cycle_unit(self, key: str, options: list[str]) -> None:
+    def _cycle_unit(self, key: str, options: list[str], index: int) -> None:
         """Cycle a unit setting through the given options and persist it."""
         current = getattr(config, key)
         next_value = options[(options.index(current) + 1) % len(options)] if current in options else options[0]
@@ -214,13 +265,13 @@ class SettingsProvider(Provider):
         app = self.app
         if isinstance(app, WeatherApp) and app.current_city:
             app._fetch_weather(app.current_city, force=True)
-        self._reopen()
+        self._reopen(index)
 
-    def _reopen(self) -> None:
-        """Re-open the settings menu so the user can keep adjusting settings."""
+    def _reopen(self, index: int) -> None:
+        """Re-open the settings menu, highlighting the changed setting."""
         app = self.app
         if isinstance(app, WeatherApp):
-            app._open_settings_menu()
+            app._open_settings_menu(highlight=index)
 
 
 class WeatherApp(App):
@@ -346,16 +397,34 @@ class WeatherApp(App):
             )
         )
 
-    def _open_variables_menu(self) -> None:
-        """Open a nested command palette listing the extra hourly variables."""
+    def _open_variables_menu(self, highlight: int | None = None) -> None:
+        """Open a nested command palette listing the variable categories."""
         self.push_screen(
             CommandPalette(
-                providers=[HourlyVariableProvider],
-                placeholder="Search variables…",
+                providers=[VariableGroupProvider],
+                placeholder="Search variable categories…",
             )
         )
+        if highlight is not None:
+            self._highlight_palette_option(highlight)
 
-    def _open_settings_menu(self) -> None:
+    def _open_variable_group(self, group: str, highlight: int | None = None) -> None:
+        """Open a nested command palette listing the variables in a group."""
+        def make_provider():
+            class _GroupProvider(VariableListProvider):
+                GROUP = group
+            return _GroupProvider
+
+        self.push_screen(
+            CommandPalette(
+                providers=[make_provider],
+                placeholder=f"Search {group.lower()} variables…",
+            )
+        )
+        if highlight is not None:
+            self._highlight_palette_option(highlight)
+
+    def _open_settings_menu(self, highlight: int | None = None) -> None:
         """Open a nested command palette listing the app settings."""
         self.push_screen(
             CommandPalette(
@@ -363,6 +432,21 @@ class WeatherApp(App):
                 placeholder="Search settings…",
             )
         )
+        if highlight is not None:
+            self._highlight_palette_option(highlight)
+
+    def _highlight_palette_option(self, index: int) -> None:
+        """Highlight the option at ``index`` in the currently-open palette."""
+        from textual.command import CommandList
+
+        def do_highlight() -> None:
+            try:
+                command_list = self.screen.query_one(CommandList)
+                command_list.highlighted = index
+            except Exception:
+                pass
+
+        self.call_after_refresh(do_highlight)
 
     def _restart_refresh_timer(self) -> None:
         """Restart the auto-refresh interval with the current config value."""
