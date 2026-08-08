@@ -1,0 +1,321 @@
+"""Simple live-updating weather TUI built with Textual."""
+
+from textual import work
+from textual.app import App, ComposeResult
+from textual.binding import Binding
+from textual.containers import Horizontal, Vertical
+from textual.widgets import DataTable, Footer, Header, Input, Label, ListItem, ListView, Static
+
+import config
+from weather import get_city_weather
+
+# WMO weather code -> short description
+WEATHER_CODES = {
+    0: "Clear",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Rime fog",
+    51: "Light drizzle",
+    53: "Drizzle",
+    55: "Dense drizzle",
+    61: "Light rain",
+    63: "Rain",
+    65: "Heavy rain",
+    71: "Light snow",
+    73: "Snow",
+    75: "Heavy snow",
+    80: "Rain showers",
+    81: "Rain showers",
+    82: "Violent showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm + hail",
+    99: "Thunderstorm + hail",
+}
+
+
+class WeatherApp(App):
+    """A TUI that shows current weather + forecast, with city switching."""
+
+    TITLE = "WeatherTerm"
+
+    # Keybindings shown automatically in the Footer.
+    BINDINGS = [
+        Binding("up", "focus_previous", "Previous panel"),
+        Binding("down", "focus_next", "Next panel"),
+        Binding("tab", "focus_next", "Next panel"),
+        Binding("shift+tab", "focus_previous", "Previous panel"),
+        Binding("escape", "back_to_city_list", "Back to city list"),
+        Binding("ctrl+d", "delete_city", "Delete city"),
+    ]
+
+    CSS = """
+    #city-list {
+        width: 30%;
+        border: round $primary;
+        margin: 1 1 1 2;
+    }
+    #weather-box {
+        border: round $primary;
+        padding: 1 2;
+        margin: 1 2 1 1;
+        width: 1fr;
+    }
+    #forecast-box {
+        border: round $primary;
+        padding: 1 2;
+        margin: 1 2 1 1;
+        width: 1fr;
+    }
+    #hourly-box {
+        border: round $primary;
+        padding: 1 2;
+        margin: 1 2 1 1;
+        width: 1fr;
+    }
+    #city {
+        text-style: bold;
+        color: $accent;
+    }
+    #coords {
+        color: $text-muted;
+    }
+    #last-updated {
+        color: $text-muted;
+    }
+    #status {
+        color: $text-muted;
+        text-style: italic;
+    }
+    #hint {
+        color: $text-muted;
+        text-style: italic;
+        margin-top: 1;
+    }
+    #add-city {
+        margin: 1 2 0 2;
+    }
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # On first boot there is no persisted city, so start with an empty
+        # selection and show empty values until the user adds a city.
+        self.current_city = config.location or ""
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Horizontal(
+            ListView(
+                *[ListItem(Label(city)) for city in config.cities],
+                id="city-list",
+            ),
+            Vertical(
+                Static("", id="city"),
+                Static("", id="coords"),
+                Static("", id="temp"),
+                Static("", id="wind"),
+                Static("", id="humidity"),
+                Static("", id="last-updated"),
+                Static("", id="status"),
+                Static("", id="hint"),
+                id="weather-box",
+            ),
+            Vertical(
+                Static("📅 5-Day Forecast", id="forecast-title"),
+                Static("", id="forecast"),
+                id="forecast-box",
+            ),
+        )
+        yield Vertical(
+            Static("🕐 Next 24 Hours", id="hourly-title"),
+            DataTable(id="hourly-chart"),
+            id="hourly-box",
+        )
+        yield Input(placeholder="Add a city and press Enter…", id="add-city")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        if self.current_city:
+            self.refresh_all()
+        else:
+            self.query_one("#hint", Static).update(
+                "👋 No city selected yet. Type a city below and press Enter to get started."
+            )
+        # Refresh periodically based on config (seconds).
+        self.set_interval(config.refresh, self.refresh_all)
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Switch the displayed city when the user selects one."""
+        # event.item is a ListItem whose first child is the Label we created.
+        label = event.item.children[0]
+        self.current_city = str(label.content)  # type: ignore[union-attr]
+        self.refresh_all()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Add a new city to the list and switch to it."""
+        city = event.value.strip()
+        if not city:
+            return
+        if city not in config.cities:
+            config.cities.append(city)
+            config.save_cities(config.cities)
+            self.query_one("#city-list", ListView).append(
+                ListItem(Label(city))
+            )
+        self.current_city = city
+        event.input.value = ""
+        # Move the cursor back to the start position.
+        event.input.cursor_position = 0
+        self.refresh_all()
+        # Return focus to the city list so arrow keys navigate cities again.
+        self.query_one("#city-list", ListView).focus()
+
+    def action_back_to_city_list(self) -> None:
+        """Blur the Input and return focus to the city list."""
+        self.query_one("#city-list", ListView).focus()
+
+    def action_delete_city(self) -> None:
+        """Delete the currently highlighted city (Ctrl+D)."""
+        list_view = self.query_one("#city-list", ListView)
+        item = list_view.highlighted_child
+        if item is None:
+            return
+        # Extract the city name from the highlighted item's label.
+        label = item.children[0]
+        city = str(label.content)  # type: ignore[union-attr]
+
+        if city in config.cities:
+            config.cities.remove(city)
+            config.save_cities(config.cities)
+
+        # Remove the item from the list view.
+        index = list_view.index
+        if index is not None:
+            list_view.remove_items([index])
+
+        # If we deleted the currently displayed city, clear the panels.
+        if city == self.current_city:
+            self.current_city = ""
+            self._clear_panels()
+            self.query_one("#hint", Static).update(
+                "👋 No city selected. Type a city below and press Enter to get started."
+            )
+
+    def refresh_all(self) -> None:
+        """Kick off a background fetch for the current city."""
+        self._fetch_weather(self.current_city)
+
+    def _clear_panels(self) -> None:
+        """Reset all weather panels to empty values."""
+        self.query_one("#city", Static).update("")
+        self.query_one("#coords", Static).update("")
+        self.query_one("#temp", Static).update("")
+        self.query_one("#wind", Static).update("")
+        self.query_one("#humidity", Static).update("")
+        self.query_one("#last-updated", Static).update("")
+        self.query_one("#status", Static).update("")
+        self.query_one("#forecast", Static).update("")
+        table = self.query_one("#hourly-chart", DataTable)
+        table.clear(columns=True)
+
+    @work(thread=True, exclusive=True, group="weather")
+    def _fetch_weather(self, city: str) -> None:
+        """Fetch weather data off the UI thread and update the UI when done."""
+        self.query_one("#status", Static).update("⏳ Loading…")
+        try:
+            info, weather, forecast, hourly = get_city_weather(city)
+        except Exception as exc:
+            # Show a friendly "no results" message when the city isn't found.
+            message = f"⚠️ No results for '{city}'. Check the spelling and try again."
+            if "City not found" not in str(exc):
+                message = f"⚠️ Error: {exc}"
+            self.call_from_thread(
+                self.query_one("#status", Static).update, message
+            )
+            return
+
+        self.call_from_thread(self._update_ui, info, weather, forecast, hourly)
+
+    def _update_ui(
+        self, info: dict, weather: dict, forecast: dict, hourly: dict
+    ) -> None:
+        """Update the UI widgets with freshly fetched data (runs on UI thread)."""
+        # Current weather panel
+        self.query_one("#city", Static).update(f"📍 {info['name']}")
+        self.query_one("#coords", Static).update(
+            f"🌐 {info['latitude']:.4f}, {info['longitude']:.4f}"
+        )
+        self.query_one("#temp", Static).update(
+            f"🌡️  Temperature: {weather['temperature_2m']} {config.temp_unit}"
+        )
+        self.query_one("#wind", Static).update(
+            f"💨 Wind: {weather['wind_speed_10m']} {config.speed_unit}"
+        )
+        self.query_one("#humidity", Static).update(
+            f"💧 Humidity: {weather['relative_humidity_2m']}{config.humidity_unit}"
+        )
+        self.query_one("#hint", Static).update("")
+        self.query_one("#last-updated", Static).update(
+            f"Updated: {weather['time']}"
+        )
+        self.query_one("#status", Static).update("")
+
+        # Daily forecast panel
+        self.query_one("#forecast", Static).update(self._format_forecast(forecast))
+
+        # Hourly forecast chart
+        self._update_hourly_chart(hourly)
+
+    def _update_hourly_chart(self, hourly: dict) -> None:
+        """Render the next 24 hours as a table of time, temp and wind."""
+        table = self.query_one("#hourly-chart", DataTable)
+        table.clear(columns=True)
+        table.add_column("Time")
+        table.add_column(f"Temp ({config.temp_unit})")
+        table.add_column(f"Wind ({config.speed_unit})")
+        table.add_column(f"Precip ({config.precip_unit})")
+
+        times = hourly["time"]
+        temps = hourly["temperature_2m"]
+        winds = hourly["wind_speed_10m"]
+        precip = hourly["precipitation"]
+        for t, temp, wind, p in zip(times, temps, winds, precip):
+            # Show only the HH:MM portion of the timestamp.
+            table.add_row(t[11:16], f"{temp}", f"{wind}", f"{p}")
+
+    def _format_forecast(self, forecast: dict) -> str:
+        """Build a multi-line string from the daily forecast data."""
+        lines = []
+        dates = forecast["time"]
+        highs = forecast["temperature_2m_max"]
+        lows = forecast["temperature_2m_min"]
+        codes = forecast["weather_code"]
+        for date, high, low, code in zip(dates, highs, lows, codes):
+            desc = WEATHER_CODES.get(code, f"Code {code}")
+            lines.append(
+                f"{date}  {desc:<16} {low}{config.temp_unit} / {high}{config.temp_unit}"
+            )
+        return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    import sys
+
+    if "--once" in sys.argv:
+        # Non-interactive test mode: fetch data and print, then exit cleanly.
+        # This avoids entering the alternate screen buffer.
+        from weather import get_city_weather
+
+        city = config.location
+        info, weather, forecast, hourly = get_city_weather(city)
+        print(f"City: {info['name']} ({info['latitude']:.4f}, {info['longitude']:.4f})")
+        print(f"Temp: {weather['temperature_2m']}{config.temp_unit}")
+        print(f"Wind: {weather['wind_speed_10m']} {config.speed_unit}")
+        print(f"Humidity: {weather['relative_humidity_2m']}{config.humidity_unit}")
+        print(f"Daily days: {len(forecast['time'])}")
+        print(f"Hourly hours: {len(hourly['time'])}")
+        print(f"Hourly temps: {hourly['temperature_2m'][:5]}...")
+    else:
+        WeatherApp().run()
