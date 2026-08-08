@@ -8,5 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+# Vscode data
+.vscode
 # User data
 cities.json
