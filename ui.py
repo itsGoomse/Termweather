@@ -79,6 +79,52 @@ class ThemeListProvider(Provider):
         return apply
 
 
+class HourlyVariableProvider(Provider):
+    """Command palette provider that toggles extra hourly forecast variables."""
+
+    async def search(self, query: str) -> Hits:
+        """Yield a command for each variable matching the query."""
+        matcher = self.matcher(query)
+        for var, (label, _unit) in config.HOURLY_VARIABLE_OPTIONS.items():
+            if (match := matcher.match(label)) > 0:
+                yield Hit(
+                    match,
+                    matcher.highlight(label),
+                    self._make_callback(var),
+                    text=label,
+                    help=self._help_text(var),
+                )
+
+    async def discover(self) -> Hits:
+        """Yield all variables so they show up before the user types."""
+        for var, (label, _unit) in config.HOURLY_VARIABLE_OPTIONS.items():
+            yield Hit(
+                0,
+                label,
+                self._make_callback(var),
+                text=label,
+                help=self._help_text(var),
+            )
+
+    def _help_text(self, var: str) -> str:
+        state = "on" if var in config.hourly_variables else "off"
+        return f"Hourly {config.HOURLY_VARIABLE_OPTIONS[var][0]} is {state} — click to toggle"
+
+    def _make_callback(self, var: str):
+        """Return a zero-argument callback that toggles the given variable."""
+        def toggle() -> None:
+            if var in config.hourly_variables:
+                config.hourly_variables.remove(var)
+            else:
+                config.hourly_variables.append(var)
+            config.save_hourly_variables(config.hourly_variables)
+            # Refresh the current city so the new columns appear.
+            app = self.app
+            if isinstance(app, WeatherApp) and app.current_city:
+                app._fetch_weather(app.current_city, force=True)
+        return toggle
+
+
 class WeatherApp(App):
     """A TUI that shows current weather + forecast, with city switching."""
 
@@ -158,7 +204,8 @@ class WeatherApp(App):
     def get_system_commands(self, screen) -> Iterable[SystemCommand]:
         """Yield the usual system commands, but replace the built-in 'Theme'
         command with one that opens our theme submenu (which persists the
-        choice to userpreferences.json)."""
+        choice to userpreferences.json), and add a 'Variables' command that
+        opens the hourly-variable picker."""
         for command in super().get_system_commands(screen):
             if command.title == "Theme":
                 yield SystemCommand(
@@ -168,6 +215,11 @@ class WeatherApp(App):
                 )
             else:
                 yield command
+        yield SystemCommand(
+            "Variables",
+            "Choose extra hourly forecast variables",
+            self._open_variables_menu,
+        )
 
     def _open_theme_menu(self) -> None:
         """Open a nested command palette listing all themes."""
@@ -175,6 +227,15 @@ class WeatherApp(App):
             CommandPalette(
                 providers=[ThemeListProvider],
                 placeholder="Search themes…",
+            )
+        )
+
+    def _open_variables_menu(self) -> None:
+        """Open a nested command palette listing the extra hourly variables."""
+        self.push_screen(
+            CommandPalette(
+                providers=[HourlyVariableProvider],
+                placeholder="Search variables…",
             )
         )
 
@@ -357,13 +418,22 @@ class WeatherApp(App):
         table.add_column(f"Wind ({config.speed_unit})")
         table.add_column(f"Precip ({config.precip_unit})")
 
+        # Add a column for each enabled extra variable.
+        for var in config.hourly_variables:
+            if var in config.HOURLY_VARIABLE_OPTIONS and var in hourly:
+                label, unit = config.HOURLY_VARIABLE_OPTIONS[var]
+                table.add_column(f"{label} ({unit})")
+
         times = hourly["time"]
         temps = hourly["temperature_2m"]
         winds = hourly["wind_speed_10m"]
         precip = hourly["precipitation"]
-        for t, temp, wind, p in zip(times, temps, winds, precip):
-            # Show only the HH:MM portion of the timestamp.
-            table.add_row(t[11:16], f"{temp}", f"{wind}", f"{p}")
+        for i, t in enumerate(times):
+            row = [t[11:16], f"{temps[i]}", f"{winds[i]}", f"{precip[i]}"]
+            for var in config.hourly_variables:
+                if var in config.HOURLY_VARIABLE_OPTIONS and var in hourly:
+                    row.append(f"{hourly[var][i]}")
+            table.add_row(*row)
 
     def _format_forecast(self, forecast: dict) -> str:
         """Build a multi-line string from the daily forecast data."""

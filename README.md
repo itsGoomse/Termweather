@@ -80,6 +80,8 @@ TermWeather --once "Holbæk"
 
 **Change the theme:** press `Ctrl+P` to open the command palette, select **Theme**, then pick any of the available themes (e.g. `nord`, `gruvbox`, `catppuccin-mocha`, `dracula`, `tokyo-night`). Your choice is saved to `userpreferences.json` and restored on the next launch. The usual system commands (Keys, Quit, Screenshot, etc.) remain available in the palette.
 
+**Add extra hourly variables:** press `Ctrl+P`, select **Variables**, then toggle any of the extra 24-hour forecast columns (e.g. Humidity, Feels like, Cloud cover, Wind gusts). Enabled variables are saved to `userpreferences.json` and requested from the API on the next fetch.
+
 ---
 
 ## Configuration

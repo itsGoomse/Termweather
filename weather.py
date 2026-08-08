@@ -2,6 +2,8 @@ import time
 
 import requests
 
+import config
+
 GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 TIMEOUT = 10  # seconds
@@ -122,6 +124,19 @@ def get_hourly_forecast(city: str) -> dict:
     return hourly
 
 
+def _hourly_variable_list() -> str:
+    """Build the comma-separated list of hourly variables to request.
+
+    Always includes the core variables (temperature, wind, precipitation) plus
+    any extra variables the user has enabled in their preferences.
+    """
+    core = "temperature_2m,wind_speed_10m,precipitation,precipitation_probability,weather_code"
+    extras = [v for v in config.hourly_variables if v in config.HOURLY_VARIABLE_OPTIONS]
+    if extras:
+        return core + "," + ",".join(extras)
+    return core
+
+
 def get_city_weather(
     city: str, force: bool = False
 ) -> tuple[dict, dict, dict, dict]:
@@ -180,7 +195,7 @@ def get_city_weather(
         {
             "latitude": lat,
             "longitude": lon,
-            "hourly": "temperature_2m,wind_speed_10m,precipitation,precipitation_probability,weather_code",
+            "hourly": _hourly_variable_list(),
             "forecast_hours": 24,
         },
     )
