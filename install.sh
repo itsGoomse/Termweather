@@ -102,22 +102,28 @@ LAUNCHER="${BIN_DIR}/TermWeather"
 # Make sure the directory exists (it may not on a fresh machine).
 mkdir -p "$BIN_DIR"
 
-cat > "$LAUNCHER" <<EOF
+if cat > "$LAUNCHER" <<EOF
 #!/usr/bin/env bash
 # Global launcher for TermWeather (created by install.sh).
 set -euo pipefail
 exec "$SCRIPT_DIR/.venv/bin/TermWeather" "\$@"
 EOF
-chmod +x "$LAUNCHER"
-ok "Installed global launcher: $LAUNCHER"
+then
+    chmod +x "$LAUNCHER"
+    ok "Installed global launcher: $LAUNCHER"
+else
+    die "Failed to create the launcher at '$LAUNCHER'."
+fi
 
 # Verify the launcher directory is on PATH.
 case ":$PATH:" in
     *":$BIN_DIR:"*) : ;;  # already on PATH
     *)
-        warn "'$BIN_DIR' is not on your PATH."
+        warn "'$BIN_DIR' is not on your PATH, so 'TermWeather' won't be found."
         warn "Add it to your shell config, e.g. in ~/.bashrc:"
-        warn "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+        printf '    %sexport PATH="$HOME/.local/bin:$PATH"%s\n' "$C_YELLOW" "$C_RESET"
+        warn "Then open a new terminal (or run 'source ~/.bashrc') and try 'TermWeather' again."
+        exit 1
         ;;
 esac
 
