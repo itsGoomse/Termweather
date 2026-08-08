@@ -1,8 +1,11 @@
 """Simple live-updating weather TUI built with Textual."""
 
+from collections.abc import Iterable
+
 from textual import work
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
+from textual.command import CommandPalette, Hit, Hits, Provider
 from textual.containers import Horizontal, Vertical
 from textual.widgets import DataTable, Footer, Header, Input, Label, ListItem, ListView, Static
 
@@ -35,12 +38,56 @@ WEATHER_CODES = {
 }
 
 
+class ThemeListProvider(Provider):
+    """Provider that lists every theme, used inside the theme submenu."""
+
+    async def search(self, query: str) -> Hits:
+        """Yield a command for each theme matching the query."""
+        matcher = self.matcher(query)
+        for theme in self._themes():
+            if (match := matcher.match(theme)) > 0:
+                yield Hit(
+                    match,
+                    matcher.highlight(theme),
+                    self._make_callback(theme),
+                    text=theme,
+                    help=f"Switch to the {theme} theme",
+                )
+
+    async def discover(self) -> Hits:
+        """Yield all themes so they show up before the user types."""
+        for theme in self._themes():
+            yield Hit(
+                0,
+                theme,
+                self._make_callback(theme),
+                text=theme,
+                help=f"Switch to the {theme} theme",
+            )
+
+    def _themes(self) -> list[str]:
+        """Return every theme available to the app, sorted by name."""
+        return sorted(self.app.available_themes)
+
+    def _make_callback(self, theme: str):
+        """Return a zero-argument callback that applies the given theme."""
+        def apply() -> None:
+            app = self.app
+            app.theme = theme
+            config.theme = theme
+            config.save_theme(theme)
+        return apply
+
+
 class WeatherApp(App):
     """A TUI that shows current weather + forecast, with city switching."""
 
     TITLE = "TermWeather"
 
     # Keybindings shown automatically in the Footer.
+    # priority=True keeps these visible in the footer even when a focused
+    # widget (e.g. the city list or the input) defines its own bindings for
+    # the same keys.
     BINDINGS = [
         Binding("up", "focus_previous", "Previous panel"),
         Binding("down", "focus_next", "Next panel"),
@@ -48,6 +95,7 @@ class WeatherApp(App):
         Binding("shift+tab", "focus_previous", "Previous panel"),
         Binding("escape", "back_to_city_list", "Back to city list"),
         Binding("ctrl+d", "delete_city", "Delete city"),
+        Binding("ctrl+q", "quit", "Quit"),
     ]
 
     CSS = """
@@ -103,6 +151,31 @@ class WeatherApp(App):
         # On first boot there is no persisted city, so start with an empty
         # selection and show empty values until the user adds a city.
         self.current_city = config.location or ""
+        # Apply the saved theme (from userpreferences.json) on startup.
+        self.theme = config.theme
+
+    def get_system_commands(self, screen) -> Iterable[SystemCommand]:
+        """Yield the usual system commands, but replace the built-in 'Theme'
+        command with one that opens our theme submenu (which persists the
+        choice to userpreferences.json)."""
+        for command in super().get_system_commands(screen):
+            if command.title == "Theme":
+                yield SystemCommand(
+                    "Theme",
+                    "Choose a theme",
+                    self._open_theme_menu,
+                )
+            else:
+                yield command
+
+    def _open_theme_menu(self) -> None:
+        """Open a nested command palette listing all themes."""
+        self.push_screen(
+            CommandPalette(
+                providers=[ThemeListProvider],
+                placeholder="Search themes…",
+            )
+        )
 
     def compose(self) -> ComposeResult:
         yield Header()

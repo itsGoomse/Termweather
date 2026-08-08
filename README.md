@@ -64,9 +64,12 @@ uv run python main.py --once "Holbæk"
 | `Enter` | Select a city from the list |
 | `Tab` / `Shift+Tab` | Cycle between panels |
 | `Esc` | Return focus to the city list |
-| `q` / `Ctrl+C` | Quit |
+| `Ctrl+P` | Open the command palette |
+| `Ctrl+Q` | Quit |
 
 **Add a city:** type a city name in the input at the bottom and press `Enter`. It will be added to the list and saved for next time.
+
+**Change the theme:** press `Ctrl+P` to open the command palette, select **Theme**, then pick any of the available themes (e.g. `nord`, `gruvbox`, `catppuccin-mocha`, `dracula`, `tokyo-night`). Your choice is saved to `userpreferences.json` and restored on the next launch. The usual system commands (Keys, Quit, Screenshot, etc.) remain available in the palette.
 
 ---
 
@@ -81,8 +84,9 @@ Edit `config.py` to change defaults:
 | `speed_unit` | Wind speed unit | `km/h` |
 | `humidity_unit` | Humidity unit | `%` |
 | `precip_unit` | Precipitation unit | `mm` |
+| `theme` | Default theme | `textual-dark` |
 
-User-added cities are stored in `cities.json` (created automatically).
+User-added cities are stored in `cities.json` (created automatically). Your chosen theme is stored in `userpreferences.json` (created automatically).
 
 ---
 
