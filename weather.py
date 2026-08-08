@@ -1,11 +1,19 @@
+import time
+
 import requests
 
 GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 TIMEOUT = 10  # seconds
 
+# How long (in seconds) cached weather data stays fresh before we re-fetch.
+CACHE_TTL = 3600  # 1 hour
+
 # A single session is reused across all calls for connection pooling.
 _session = requests.Session()
+
+# In-memory cache: city name -> (timestamp, (info, current, daily, hourly)).
+_cache: dict[str, tuple[float, tuple[dict, dict, dict, dict]]] = {}
 
 
 class WeatherError(Exception):
@@ -119,7 +127,17 @@ def get_city_weather(city: str) -> tuple[dict, dict, dict, dict]:
 
     Returns ``(info, weather, daily, hourly)``.  This avoids geocoding the same
     city multiple times and is the recommended entry point for the UI.
+
+    Results are cached per city for ``CACHE_TTL`` seconds (1 hour). If a cached
+    result is still fresh, it is returned without hitting the API again.
     """
+    now = time.time()
+    cached = _cache.get(city)
+    if cached is not None:
+        timestamp, data = cached
+        if now - timestamp < CACHE_TTL:
+            return data
+
     result = _geocode(city)
     info = {
         "name": result.get("name", city),
@@ -167,4 +185,6 @@ def get_city_weather(city: str) -> tuple[dict, dict, dict, dict]:
     if not isinstance(hourly, dict):
         raise WeatherError("The weather service returned no hourly forecast data.")
 
-    return info, current, daily, hourly
+    data = (info, current, daily, hourly)
+    _cache[city] = (now, data)
+    return data

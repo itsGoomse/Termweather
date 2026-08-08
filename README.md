@@ -117,6 +117,12 @@ termweather/
 
 ---
 
+## Caching
+
+To reduce API requests, weather data is cached **per city** for **1 hour**. When you switch back to a city that was fetched less than an hour ago, the cached data is shown without hitting the API again. The cache is in-memory (cleared when the app exits) and lives in `weather.py` (`CACHE_TTL = 3600`).
+
+---
+
 ## License
 
 This project is licensed under the MIT License.
