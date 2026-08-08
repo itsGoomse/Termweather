@@ -71,6 +71,7 @@ uv run python main.py --once "Holbæk"
 | `Tab` / `Shift+Tab` | Cycle between panels |
 | `Esc` | Return focus to the city list |
 | `Ctrl+P` | Open the command palette |
+| `Ctrl+F` | Force update (bypass the cache) |
 | `Ctrl+Q` | Quit |
 
 **Add a city:** type a city name in the input at the bottom and press `Enter`. It will be added to the list and saved for next time.
@@ -119,7 +120,7 @@ termweather/
 
 ## Caching
 
-To reduce API requests, weather data is cached **per city** for **1 hour**. When you switch back to a city that was fetched less than an hour ago, the cached data is shown without hitting the API again. The cache is in-memory (cleared when the app exits) and lives in `weather.py` (`CACHE_TTL = 3600`).
+To reduce API requests, weather data is cached **per city** for **1 hour**. When you switch back to a city that was fetched less than an hour ago, the cached data is shown without hitting the API again. Press **`Ctrl+F`** to force a fresh fetch that bypasses the cache. The cache is in-memory (cleared when the app exits) and lives in `weather.py` (`CACHE_TTL = 3600`).
 
 ---
 

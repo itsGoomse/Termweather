@@ -122,18 +122,21 @@ def get_hourly_forecast(city: str) -> dict:
     return hourly
 
 
-def get_city_weather(city: str) -> tuple[dict, dict, dict, dict]:
+def get_city_weather(
+    city: str, force: bool = False
+) -> tuple[dict, dict, dict, dict]:
     """Fetch city info, current weather, daily and hourly forecast in one geocode.
 
     Returns ``(info, weather, daily, hourly)``.  This avoids geocoding the same
     city multiple times and is the recommended entry point for the UI.
 
     Results are cached per city for ``CACHE_TTL`` seconds (1 hour). If a cached
-    result is still fresh, it is returned without hitting the API again.
+    result is still fresh, it is returned without hitting the API again, unless
+    ``force`` is ``True`` (which bypasses the cache and re-fetches).
     """
     now = time.time()
     cached = _cache.get(city)
-    if cached is not None:
+    if not force and cached is not None:
         timestamp, data = cached
         if now - timestamp < CACHE_TTL:
             return data

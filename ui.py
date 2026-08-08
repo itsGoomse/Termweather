@@ -95,6 +95,7 @@ class WeatherApp(App):
         Binding("shift+tab", "focus_previous", "Previous panel"),
         Binding("escape", "back_to_city_list", "Back to city list"),
         Binding("ctrl+d", "delete_city", "Delete city"),
+        Binding("ctrl+f", "force_refresh", "Force update"),
         Binding("ctrl+q", "quit", "Quit"),
     ]
 
@@ -280,6 +281,12 @@ class WeatherApp(App):
         """Kick off a background fetch for the current city."""
         self._fetch_weather(self.current_city)
 
+    def action_force_refresh(self) -> None:
+        """Force a fresh fetch for the current city, bypassing the cache."""
+        if not self.current_city:
+            return
+        self._fetch_weather(self.current_city, force=True)
+
     def _clear_panels(self) -> None:
         """Reset all weather panels to empty values."""
         self.query_one("#city", Static).update("")
@@ -294,11 +301,11 @@ class WeatherApp(App):
         table.clear(columns=True)
 
     @work(thread=True, exclusive=True, group="weather")
-    def _fetch_weather(self, city: str) -> None:
+    def _fetch_weather(self, city: str, force: bool = False) -> None:
         """Fetch weather data off the UI thread and update the UI when done."""
         self.query_one("#status", Static).update("⏳ Loading…")
         try:
-            info, weather, forecast, hourly = get_city_weather(city)
+            info, weather, forecast, hourly = get_city_weather(city, force=force)
         except Exception as exc:
             # Show a friendly "no results" message when the city isn't found.
             message = f"⚠️ No results for '{city}'. Check the spelling and try again."
