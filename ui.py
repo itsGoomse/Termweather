@@ -289,6 +289,19 @@ class WeatherApp(App):
     #add-city {
         margin: 1 2 0 2;
     }
+
+    /* Make the command palette's highlighted option clearly visible in every
+       theme (the default block-cursor color can be invisible in bash). */
+    CommandPalette CommandList > .option-list--option-highlighted {
+        color: $text;
+        background: $primary;
+        text-style: bold;
+    }
+    CommandPalette CommandList:ansi > .option-list--option-highlighted {
+        color: $text;
+        background: $primary;
+        text-style: bold;
+    }
     """
 
     def __init__(self) -> None:
