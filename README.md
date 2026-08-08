@@ -28,18 +28,18 @@ A live-updating weather **TUI** (terminal user interface) built with [Textual](h
 
 ### Installation
 
-```bash 
-# Run the included install script
-cd Termweather
+```bash
+# Run the included install script (recommended)
+cd termweather
 ./install.sh
 ```
 
 ```bash
-# Clone the repo
+# Or set up manually
 git clone https://github.com/itsGoomse/termweather.git
 cd termweather
 
-# Set up the environment with uv
+# With uv
 uv sync
 
 # Or with pip
@@ -51,14 +51,16 @@ pip install -e .
 ### Run the TUI
 
 ```bash
-uv run python main.py
+TermWeather
 ```
 
 ### Run a one-off data check (no TUI)
 
 ```bash
-uv run python main.py --once "Holbæk"
+TermWeather --once "Holbæk"
 ```
+
+> The `TermWeather` command is created automatically when the package is installed (via `uv sync` or `pip install -e .`). The `install.sh` script also installs a **global launcher** in `~/.local/bin`, so you can run `TermWeather` from any directory without activating the virtual environment. If you're in the project directory without installing, you can still run `python main.py` directly.
 
 ---
 

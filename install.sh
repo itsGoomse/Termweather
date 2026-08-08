@@ -88,13 +88,30 @@ esac
 if [[ "${1:-}" == "--once" ]]; then
     info "Launching TermWeather..."
     case "$PM" in
-        uv) uv run python main.py ;;
-        pip) python main.py ;;
+        uv) uv run TermWeather ;;
+        pip) TermWeather ;;
     esac
 fi
 
+# --- Install a global 'TermWeather' launcher --------------------------------
+# Create a small wrapper in ~/.local/bin (which is on PATH) so the command
+# works from any directory without activating the venv first.
+BIN_DIR="${HOME}/.local/bin"
+LAUNCHER="${BIN_DIR}/TermWeather"
+
+if [[ -d "$BIN_DIR" ]]; then
+    cat > "$LAUNCHER" <<EOF
+#!/usr/bin/env bash
+# Global launcher for TermWeather (created by install.sh).
+set -euo pipefail
+exec "$SCRIPT_DIR/.venv/bin/TermWeather" "\$@"
+EOF
+    chmod +x "$LAUNCHER"
+    ok "Installed global launcher: $LAUNCHER"
+else
+    warn "Could not find '$BIN_DIR' on PATH — skipping global launcher."
+    warn "Run the app with: source .venv/bin/activate && TermWeather"
+fi
+
 ok "Installation complete. Run the app with:"
-case "$PM" in
-    uv)  printf '    %suv run python main.py%s\n' "$C_GREEN" "$C_RESET" ;;
-    pip) printf '    %ssource .venv/bin/activate && python main.py%s\n' "$C_GREEN" "$C_RESET" ;;
-esac
+printf '    %sTermWeather%s\n' "$C_GREEN" "$C_RESET"
