@@ -30,15 +30,15 @@ A live-updating weather **TUI** (terminal user interface) built with [Textual](h
 The app includes an install script, that adds the app as an executable in the ~/.local/bin path
 
 ```bash
+# Clone the repo
+git clone https://github.com/itsGoomse/Termweather.git
 # Run the included install script (recommended)
-cd termweather
+cd Termweather
 ./install.sh
-```
-### Run the TUI
-
-```bash
+# Start the app
 TermWeather
 ```
+
 ### Run a one-off data check (no TUI)
 
 ```bash
